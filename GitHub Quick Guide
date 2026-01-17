@@ -1,0 +1,178 @@
+===== WHERE (AND WHY) YOUR CODE IS STORED =====
+
+Remote Repository (Stored on the Github website) >
+	
+	Local Repository (Used to store committed changes locally) >
+		
+		Staging Area (Temp holding spot for changes before "committing") >
+			
+			Local Working Directory (Used for actually working on files)
+				Note: This isn't actually a different folder from the Local Repo. This will make sense later, maybe.
+
+Note: A repository stores more than just your files. It stores a history of them too. You could look back to see exactly what the Repo stored at any given time.
+
+Note: Local Repository, Staging Area, Local Working Directory are all actually stored on your PC. It may seem redundant, but they each serve different purposes to ensure that you can be careful about managing the progress of your work. (That doesn't mean it isn't convoluted/frustrating.)
+
+
+===== ESSENTIAL COMMANDS =====
+Important: These commands can be thought of as prefixes. In practice, you will need to type additional letters/symbols or names to get things done.
+	
+Command: git clone
+English: Makes a copy of the Remote Repo onto the Local Repo
+Note: This only needs to be done the first time. See 'git pull' for updating later.
+
+Command: git checkout
+English: Makes a copy of the Local Repo onto the Local Working Dir
+Note: The name 'checkout' is ass. What this actually does is make a branch of the local repo for you to work with AND/OR switch to a branch that already exists. (See BRANCHING below)
+
+Command: git add
+English: Makes a copy of files you specify from the Local Working Dir onto the Staging Area
+
+Command: git commit
+English: Makes a copy of the Staging Area onto the Local Repo
+Note: This "commit" only locks in your changes locally, and records the commit w/ timestamp
+
+Command: git push
+English: Makes a copy of your Local Repo to the Remote Repo
+Note: This actually uploads your "commit" to GitHub for your team to see
+
+Command: git pull
+English: Makes a copy of the Remote Repo and merges it with your Local Repo
+Note: Used for applying team updates to what you're working on. Use with caution!
+Note: This is a combo of the 'git fetch' and 'git merge' command
+
+Command: git status
+English: Wow, it really just means show the status of Git
+
+
+===== BRANCHING =====
+
+The repo starts with a main branch. This is generally where ready/functioning work is kept.
+
+You can make a separate branch (AKA checkout), which is essentially a copy of the main branch.
+	You can treat this as a 'dummy' repo to work on without the risk of screwing up the actual repo.
+	Then once the work in the branch is ready for show time, it can be merged back into the main branch.
+
+
+===== ACTUALLY USING GIT ON YOUR PC =====
+
+NOTE: If you see brackets <> or {} these are placeholders. Do not enter them with the command, just replace them. If you see quotes "" they are actually used in the command.
+
+i. Download Git: https://git-scm.com/install/windows
+
+	Note: Git is a local program that acts as an interface between you, your files, and the GitHub website.
+
+ii. Install the program
+	iii. You can just hit 'next/yes' for most of the steps. EXCEPT for:
+		-"Choosing the default editor" where you want to select the 'Use Visual Studio Code as Git's default editor."
+
+iii. Make a folder somewhere on your PC. This will be a folder for general Git shenanigans. For example, made a folder right on my local disk: C:\GitShit.
+
+iv. Open the Git Bash program and enter the following commands:
+	git config --global user.email "github@email.com"
+	git config --global user.name "githubUsername"
+
+
+1. Open the folder, then right click in the empty space and select "Open Git Bash here"
+	-This opens a terminal. This is where you actually interact with Git, unfortunately.
+	-You should see some gibberish that ends with /c/{foldername}, which means whatever Git does, it does in this location.
+
+
+2. Go to our GitHub repository page: https://github.com/jorSando/practicum-soundlightbar
+
+
+3. Click on the green 'Code' button, and copy that link you see.
+	-Yes, its the same link I gave you above with 'git.' added at the end. Too bad.
+
+
+2. Creating your Local Repo
+
+	Type:
+		git clone {paste the URL}
+	
+			Note: You will probably need to manually right click and select Paste. Or hit Shift+Insert.
+
+	-You should now see that a folder 'practicum-soundlightbar' is created on your PC.
+	-Congrats, you now have a Local Repo on your PC.
+	
+	
+4. "Checkout"
+	First, open the 'practicum-soundlightbar' folder, then right click in the empty space and select "Open Git Bash here".
+	
+	Important: When naming a branch, please make sure to include in the name what you plan on working on. (Examples: KiCadUpdate, CodeBugfix, Documentation,)
+		You *can* add your name to a branch but branch names are generally made per-task, not per-person. By the way, when you push a new branch you created everyone will see that it was you who created it, so that takes care of it.
+	
+	You can now:
+		A) Make a new branch and work on it. Type:
+		
+			git checkout -b {newBranchName}
+			
+		B) Switch to an already existing branch and work on it
+		
+			git checkout {alreadyExistingBranchName}
+
+	When you checkout, double check to make sure your local repo is up to date with the remote repo. (Unless you are knowingly avoiding any updates to the remote repo.)
+			
+	Important: Note that a new folder for the new branch has not been created. When you switch to a different branch, the 'practicum-soundlightbar' folder will update to contain whatever files are in that branch. (kinda ass if you ask me)
+	Note: You can check existing local and remote branches by typing: git branch -a
+	Note: You can check which branch you are working on by typing: git status
+	
+	Note: You may want to Stage, Commit, and Push as soon as you create a branch, even if you haven't made any changes yet. That way everyone is aware that this new branch exists, and what its name is.
+	
+	
+5. Staging Area
+	A) To simply stage all the contents of the folder, or if you want to stage a bunch of new files you added, type:
+	
+		git add .
+		
+	B) If you want to stage one single file you added, type:
+	
+		git add . <filename>
+		
+	C) If you want to stage one single file you updated, type:
+	
+		git add -p <filename>
+
+
+6. Committment <3
+	To commit your staged files to your Local Repo, type:
+	
+		git commit -m "Short message describing your update"
+
+
+7. Push to the actual internet (Github)
+	The command for this depends on what kind of branch you are working with.
+	
+		A) Push a new branch that exists on your Local Repo, but not the Remote Repo yet:
+			
+			git push -u origin <branch-name>
+		
+		B) Push a branch that already exists both on the Local and Remote Repos:
+			
+			git push
+			
+	Note: You may be prompted to sign into your Github account upon pushing
+	
+	Note: You may want to Push as soon as you create a branch, even if you haven't made any changes yet. That way everyone is aware that this new branch exists, and what its name is.
+	
+
+===== WORKFLOW =====
+
+First time setup: Do all steps (1-7)
+
+When you want to work on a given branch: Do step 4
+
+When you have made changes to a branch you checked out and want to give them to the group: Do steps 5-7
+
+
+===== MERGING =====
+
+When you Push, you will then see a merge request appear for that branch on Github. Someone will need to check to make sure the merge doesn't break/overwrite something unintended. Once we confirm that merging won't cause any problems, we hit the merge button then confirm.
+
+Generally, you want to be fairly certain that your Push won't cause any issues before even pushing. At the very least make sure you are aware if anyone is working on the same branch as you, and what they may be changing.
+
+Once you have pushed, reach out to at least one person who is familiar with the aspect of the project you are making changes to. Once at least you and another teammate are confident in merging the branch then go ahead and do so.
+
+Remember, merging back to the main branch is meant for work that is more functional and less WIP.
+
+(I am still learning how pushes and merges work between branches. We will be learning the best way to go about this as we work.)
