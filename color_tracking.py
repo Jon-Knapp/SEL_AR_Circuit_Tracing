@@ -116,6 +116,7 @@ def main():
     # OpenCV uses BGR order, not RGB.
     # (0, 255, 255) is bright yellow in BGR.
     TARGET_BGR = (0, 255, 255)
+    LABEL_TEXT = "Yellow"  # <--- what we will draw above the bbox
 
     # How strict should the HSV detection be?
     # - h_tol: hue tolerance (bigger = more forgiving, but more false positives)
@@ -176,7 +177,6 @@ def main():
             # Convert to HSV and threshold by color
             # -----------------------------
             hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-
             mask = build_color_mask(hsv, hsv_ranges)
 
             # Clean up mask:
@@ -196,6 +196,33 @@ def main():
 
                 # Draw a green rectangle on the original frame
                 cv.rectangle(frame, (x, y), (x + bw, y + bh), (0, 255, 0), 3)
+
+                # -------- Label "Yellow" above the bbox --------
+                # Pick a text position slightly above the top-left corner of the box.
+                # Clamp it so it doesn't go off-screen if the box is near the top.
+                text_x = x
+                text_y = max(0, y - 10)
+
+                # (Optional but recommended) draw a filled rectangle behind the text
+                # so the text stays readable on busy backgrounds.
+                font = cv.FONT_HERSHEY_SIMPLEX
+                font_scale = 0.8
+                thickness = 2
+
+                # Get text size (width, height) so we can size the background rectangle
+                (text_w, text_h), baseline = cv.getTextSize(LABEL_TEXT, font, font_scale, thickness)
+
+                # Background rectangle corners:
+                # top-left  = (text_x, text_y - text_h - baseline)
+                # bottom-right = (text_x + text_w, text_y + baseline)
+                # Clamp top-left y to 0 to avoid negative coords
+                bg_tl = (text_x, max(0, text_y - text_h - baseline))
+                bg_br = (text_x + text_w, text_y + baseline)
+
+                # Draw filled background (black) then text (yellow-ish) on top
+                cv.rectangle(frame, bg_tl, bg_br, (0, 0, 0), -1)
+                cv.putText(frame, LABEL_TEXT, (text_x, text_y), font, font_scale, (0, 255, 255), thickness, cv.LINE_AA)
+                # -----------------------------------------------
 
                 # Optional: show centroid too (nice for debugging)
                 cx = x + bw // 2
