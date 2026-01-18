@@ -2,7 +2,6 @@
 Minimum Requirements:
 opencv-python==4.6.0.66
 numpy==1.23.4
-Pillow==9.2.0
 
 Sources:
 https://www.youtube.com/watch?v=aFNDh5k3SjU
