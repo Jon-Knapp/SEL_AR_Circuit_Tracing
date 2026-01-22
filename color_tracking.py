@@ -111,153 +111,129 @@ def build_color_mask(hsv_frame, hsv_ranges):
 
 def main():
     # -----------------------------
-    # Choose the tape color to track (BGR!)
+    # Track MULTIPLE colors (each gets its own bbox + label)
     # -----------------------------
-    # OpenCV uses BGR order, not RGB.
-    # (0, 255, 255) is bright yellow in BGR.
-    TARGET_BGR = (0, 255, 255)
-    LABEL_TEXT = "Yellow"  # <--- what we will draw above the bbox
+    # Replace your single TARGET_BGR / LABEL_TEXT :contentReference[oaicite:2]{index=2}
+    TARGETS = [
+        {
+            "label": "Yellow",
+            "bgr": (0, 255, 255),
+            "box_color": (0, 255, 0),      # green bbox
+            "text_color": (0, 255, 255),   # yellow text
+        },
+        {
+            "label": "Blue",
+            "bgr": (255, 0, 0),
+            "box_color": (255, 0, 0),      # blue bbox
+            "text_color": (255, 0, 0),     # blue text
+        },
+    ]
 
     # How strict should the HSV detection be?
-    # - h_tol: hue tolerance (bigger = more forgiving, but more false positives)
-    # - s_min/v_min: minimum saturation/value to avoid picking up gray/dark junk
     h_tol = 20
     s_min = 100
     v_min = 100
 
-    # Morphology settings (helps reduce speckles and fill tiny holes)
     kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3, 3))
 
-    # -----------------------------
-    # Open camera
-    # -----------------------------
     cap = cv.VideoCapture(0)
     if not cap.isOpened():
         raise RuntimeError("ERROR: Could not open camera (VideoCapture(0)).")
 
-    # Get real camera frame size (so writers match frames)
     w = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 
-    # Get FPS if camera reports it; otherwise fall back to a sane default
     fps = cap.get(cv.CAP_PROP_FPS)
     if fps is None or fps <= 0 or np.isnan(fps):
         fps = 20.0
 
-    # -----------------------------
-    # Setup video writers
-    # -----------------------------
-    # Note: Different machines like different codecs. XVID is common for AVI.
     fourcc = cv.VideoWriter_fourcc(*"XVID")
-
     out_frame = cv.VideoWriter("output.avi", fourcc, float(fps), (w, h))
+    out_mask  = cv.VideoWriter("mask.avi",   fourcc, float(fps), (w, h))
 
-    # Most compatible approach:
-    # - keep writer as color (3-channel),
-    # - convert mask (1-channel) -> BGR before writing.
-    out_mask = cv.VideoWriter("mask.avi", fourcc, float(fps), (w, h))
+    # Precompute HSV ranges for each target color (do once)
+    for t in TARGETS:
+        t["hsv_ranges"] = get_hsv_ranges_for_bgr(
+            t["bgr"], h_tol=h_tol, s_min=s_min, v_min=v_min
+        )
 
-    # Precompute HSV ranges for our target color (cheap, do once)
-    hsv_ranges = get_hsv_ranges_for_bgr(TARGET_BGR, h_tol=h_tol, s_min=s_min, v_min=v_min)
+    font = cv.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.8
+    thickness = 2
 
     try:
         while True:
-            # -----------------------------
-            # Read one frame
-            # -----------------------------
             ret, frame = cap.read()
             if not ret:
                 print("WARNING: Failed to read a frame from camera. Stopping.")
                 break
 
-            # Optional: mirror view (often feels more natural when holding objects up)
             frame = cv.flip(frame, 1)
-
-            # -----------------------------
-            # Convert to HSV and threshold by color
-            # -----------------------------
             hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-            mask = build_color_mask(hsv, hsv_ranges)
 
-            # Clean up mask:
-            # - OPEN removes small white specks (noise)
-            # - CLOSE fills small black holes inside the detected region
-            mask = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel)
-            mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
+            # We'll keep ONE combined diagnostic mask video,
+            # but still detect/draw per-color bboxes.
+            combined_mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
 
-            # -----------------------------
-            # Find a bounding box around the detected region
-            # -----------------------------
-            # findNonZero returns None if there are zero white pixels in the mask.
-            coords = cv.findNonZero(mask)
+            for t in TARGETS:
+                # Build a mask for this specific color
+                mask_i = build_color_mask(hsv, t["hsv_ranges"])
 
-            if coords is not None:
+                # Same cleanup you already do :contentReference[oaicite:3]{index=3}
+                mask_i = cv.morphologyEx(mask_i, cv.MORPH_OPEN, kernel)
+                mask_i = cv.morphologyEx(mask_i, cv.MORPH_CLOSE, kernel)
+
+                # Add into combined diagnostic mask
+                combined_mask |= mask_i
+
+                # Find bbox for THIS color
+                coords = cv.findNonZero(mask_i)
+                if coords is None:
+                    continue
+
                 x, y, bw, bh = cv.boundingRect(coords)
 
-                # Draw a green rectangle on the original frame
-                cv.rectangle(frame, (x, y), (x + bw, y + bh), (0, 255, 0), 3)
+                # Draw bbox
+                cv.rectangle(frame, (x, y), (x + bw, y + bh), t["box_color"], 3)
 
-                # -------- Label "Yellow" above the bbox --------
-                # Pick a text position slightly above the top-left corner of the box.
-                # Clamp it so it doesn't go off-screen if the box is near the top.
+                # Label above bbox (same idea as your Yellow label code)
                 text_x = x
                 text_y = max(0, y - 10)
 
-                # (Optional but recommended) draw a filled rectangle behind the text
-                # so the text stays readable on busy backgrounds.
-                font = cv.FONT_HERSHEY_SIMPLEX
-                font_scale = 0.8
-                thickness = 2
-
-                # Get text size (width, height) so we can size the background rectangle
-                (text_w, text_h), baseline = cv.getTextSize(LABEL_TEXT, font, font_scale, thickness)
-
-                # Background rectangle corners:
-                # top-left  = (text_x, text_y - text_h - baseline)
-                # bottom-right = (text_x + text_w, text_y + baseline)
-                # Clamp top-left y to 0 to avoid negative coords
+                (text_w, text_h), baseline = cv.getTextSize(
+                    t["label"], font, font_scale, thickness
+                )
                 bg_tl = (text_x, max(0, text_y - text_h - baseline))
                 bg_br = (text_x + text_w, text_y + baseline)
 
-                # Draw filled background (black) then text (yellow-ish) on top
                 cv.rectangle(frame, bg_tl, bg_br, (0, 0, 0), -1)
-                cv.putText(frame, LABEL_TEXT, (text_x, text_y), font, font_scale, (0, 255, 255), thickness, cv.LINE_AA)
-                # -----------------------------------------------
+                cv.putText(
+                    frame, t["label"], (text_x, text_y),
+                    font, font_scale, t["text_color"], thickness, cv.LINE_AA
+                )
 
-                # Optional: show centroid too (nice for debugging)
+                # Optional centroid
                 cx = x + bw // 2
                 cy = y + bh // 2
-                cv.circle(frame, (cx, cy), 5, (0, 255, 0), -1)
+                cv.circle(frame, (cx, cy), 5, t["box_color"], -1)
 
-            # -----------------------------
-            # Write videos to disk
-            # -----------------------------
+            # Write outputs
             out_frame.write(frame)
+            out_mask.write(cv.cvtColor(combined_mask, cv.COLOR_GRAY2BGR))
 
-            # Convert 1-channel mask to 3-channel BGR for max codec/player compatibility
-            mask_bgr = cv.cvtColor(mask, cv.COLOR_GRAY2BGR)
-            out_mask.write(mask_bgr)
-
-            # -----------------------------
-            # Live debug windows
-            # -----------------------------
+            # Live windows
             cv.imshow("Frame (Tracked)", frame)
-            cv.imshow("Mask (Diagnostic)", mask)
+            cv.imshow("Mask (Diagnostic)", combined_mask)
 
-            # Quit on 'q' or ESC
             key = cv.waitKey(1) & 0xFF
             if key == ord("q") or key == 27:
                 break
 
     finally:
-        # -----------------------------
-        # Cleanup (always runs)
-        # -----------------------------
         cap.release()
         out_frame.release()
         out_mask.release()
         cv.destroyAllWindows()
-
 
 if __name__ == "__main__":
     main()
