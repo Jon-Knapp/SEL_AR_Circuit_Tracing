@@ -1,3 +1,4 @@
+# need pip install mediapipe==0.10.9
 import cv2
 import mediapipe as mp
 import numpy as np
