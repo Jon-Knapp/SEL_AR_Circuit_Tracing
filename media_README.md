@@ -10,10 +10,10 @@ https://github.com/Jon-Knapp/SEL_AR_Circuit_Tracing/releases/tag/v1.0
 
 ## What each video shows
 
-- **Annotation source footage (~865 MB)** — the raw overhead video that frames were
+- **Annotation source footage (~865 MB)**: the raw overhead video that frames were
   extracted from to build the device-detection training dataset (see
   `tools/extract_frames_for_yolo.py`).
-- **Main program demo (~1.04 GB)** — a screen recording of the delivered system (the
-  OpenCV-window `main.py`) being used from start to finish.
-- **Main program demo, GUI (~0.99 GB)** — a screen recording of the system run
+- **Main program demo (~1.04 GB)**: a screen recording of the delivered system (the
+  OpenCV-window `src/main.py`) being used from start to finish.
+- **Main program demo, GUI (~0.99 GB)**: a screen recording of the system run
   through the PyQt5 GUI (`src/gui.py`).
