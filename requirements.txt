@@ -1,0 +1,24 @@
+# Augmented Reality Circuit Tracing - Python dependencies
+#
+# Install with:  pip install -r requirements.txt
+#
+# Computer vision. The "contrib" build is required (not plain opencv-python):
+# it includes the ArUco marker module the rectification step depends on.
+opencv-contrib-python>=4.8.0
+#
+# Numerical arrays - used throughout for image and geometry math.
+numpy>=1.24.0
+#
+# YOLOv8 oriented-bounding-box (OBB) detection. Installing ultralytics also
+# pulls in PyTorch (torch) automatically, so torch needs no separate line.
+# A CUDA GPU is optional: detection runs once per session and is fine on CPU.
+ultralytics>=8.0.0
+#
+# LabJack U12 Python wrapper. This is the PyPI package name; the module it
+# gives you is "u12" (so the code does "import u12"). Provides the continuity
+# read used by labjack_interface.py.
+LabJackPython>=2.0.4
+#
+# NOTE: this installs the PYTHON side only. The LabJack U12 also needs its
+# Windows hardware driver (ljackuw.dll), which pip cannot install - run the
+# LabJack U12 installer separately. See the README's "Software setup" section.
