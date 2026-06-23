@@ -1,0 +1,25 @@
+# Generated session output — never commit these. The running system creates them
+# inside src/ each session, and committing them is what re-bloats the repository.
+captures/
+recordings/
+connections/
+*.db
+
+# Python bytecode / caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editors / IDEs
+.idea/
+.vscode/
+
+# Operating-system clutter
+.DS_Store
+Thumbs.db
