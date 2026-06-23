@@ -163,16 +163,17 @@ consistent across all three.
  
 ```
 SEL_AR_Circuit_Tracing/
-├── src/                  the final, runnable system (run from here)
-├── tools/                supporting scripts used to build the project
+├── src/                   the final, runnable system (run from here)
+├── tools/                 supporting scripts used to build the project
 ├── weights/
-│   ├── device_detection/ training run behind the delivered detection model
+│   ├── device_detection/  training run behind the delivered detection model
 │   └── probe_tracking/    future-work model (NOT used by the delivered system)
 ├── datasets/
-│   ├── device_detection/ dataset that trained the delivered detection model
+│   ├── device_detection/  dataset that trained the delivered detection model
 │   └── probe_detection/   pointer to the future-work dataset (see below)
-├── docs/                 final report, supporting documents, and a media pointer
+├── docs/                  final report, supporting documents, and a media pointer
 ├── requirements.txt
+├── media_README.md
 ├── LICENSE
 └── README.md
 ```
