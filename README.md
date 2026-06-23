@@ -25,7 +25,7 @@ This project was built as a Portland State University senior capstone for SEL.
    inside each device's bounding box, so the same calibration applies to every
    device of that class, anywhere on the board.
 3. **Tracks the two probes** by color (HSV). No physical markers are attached to
-   the probes. You teach each probe its color by clicking it in the live video.
+   the probes. Instead, you teach each probe its color by clicking it in the live video.
 4. **Flattens the board for the record** using four ArUco markers to compute a
    homography. The flattened view is a clean record surface only; nothing is
    tracked on it.
@@ -50,7 +50,7 @@ being measured).
  
 - **Elgato Facecam 4K**, mounted overhead, roughly perpendicular to the board.
   (Configured via the Elgato Camera Hub to Mirror + Flip; see `config.py`.)
-- **LabJack U12**, connected by USB, wired to the **two test probes** — *not* to the
+- **LabJack U12**, connected by USB, wired to the **two test probes** and *not* to the
   circuit terminals directly. The U12 reports a single yes/no: are the probe tips
   electrically connected?
 - **Two test probes**, with no markers attached.
@@ -148,9 +148,9 @@ Run from inside `src/` so the program finds `weights_v2_4_obb.pt`,
  
 Each session writes to local folders (created automatically, ignored by Git):
  
-- **`captures/`** — clean record images and labeled legend images (`c` and `q`).
-- **`recordings/`** — session videos (`r`).
-- **`connections/`** — a fresh, timestamped pair of files per session: a
+- **`captures/`**: clean record images and labeled legend images (`c` and `q`).
+- **`recordings/`**: session videos (`r`).
+- **`connections/`**: a fresh, timestamped pair of files per session: a
   human-readable `.txt` table and a SQLite `.db`. A previous session's files are
   never overwritten.
 The list of recorded connections is the single source of truth: the groups, the
@@ -163,24 +163,27 @@ consistent across all three.
  
 ```
 SEL_AR_Circuit_Tracing/
-├── src/                   the final, runnable system (run from here)
-├── tools/                 supporting scripts used to build the project
-├── datasets/
-│   ├── device_detection/  dataset that trained the delivered detection model
-│   └── probe_detection/   pointer to the future-work dataset (see below)
-├── docs/                  final report and supporting documents
+├── src/                  the final, runnable system (run from here)
+├── tools/                supporting scripts used to build the project
 ├── weights/
-│   ├── device_detection/  trained detection model with supporting documentaion
-│   └── probe_detection/   several models generated            
+│   ├── device_detection/ training run behind the delivered detection model
+│   └── probe_tracking/    future-work model (NOT used by the delivered system)
+├── datasets/
+│   ├── device_detection/ dataset that trained the delivered detection model
+│   └── probe_detection/   pointer to the future-work dataset (see below)
+├── docs/                 final report, supporting documents, and a media pointer
 ├── requirements.txt
 ├── LICENSE
 └── README.md
 ```
  
-The **probe-detection dataset** is hosted as a GitHub **Release** asset, not in the
-repository, because it exceeds GitHub's 100 MB per-file limit. It supports an
-experimental, future-work effort and is **not used by the delivered system**. See
-`datasets/probe_detection/README.md` for the download link.
+Some large files are hosted as GitHub **Release** assets rather than committed to
+the repository, because they exceed GitHub's 100 MB per-file limit:
+ 
+- The **probe-detection dataset** (~476 MB) is an experimental, future-work dataset
+  **not used by the delivered system**. See `datasets/probe_detection/README.md`.
+- Three **sponsor-requested videos** (~1 GB each). See `docs/media.md`.
+Both are available from the [v1.0 release](https://github.com/Jon-Knapp/SEL_AR_Circuit_Tracing/releases/tag/v1.0).
  
 ---
  
@@ -216,4 +219,3 @@ These are documented honestly so the system is not trusted beyond what it can do
 See [`LICENSE`](LICENSE).
  
 Built for Schweitzer Engineering Laboratories.
- 
