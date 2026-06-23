@@ -1,7 +1,7 @@
 # Probe-detection dataset (future work)
 
 **This dataset is NOT used by the delivered system.** The shipped probe tracking is
-color-based (HSV) and uses no trained model — see `src/probe_tracking.py`. This
+color-based (HSV) and uses no trained model (see `src/probe_tracking.py`). This
 dataset supports an experimental, future-work effort to track the probes with a
 trained object detector instead.
 
