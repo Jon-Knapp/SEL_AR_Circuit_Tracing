@@ -1,7 +1,7 @@
 # Project media
 
 Three videos requested by the industry sponsor are attached to the project's GitHub
-**Release** rather than committed here, because each is roughly 1 GB — far over
+**Release** rather than committed here, because each is roughly 1 GB. This is far over
 GitHub's 100 MB per-file limit for files committed to a repository.
 
 Download them from the v1.0 release:
