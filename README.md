@@ -1,222 +1,149 @@
-# Augmented Reality Circuit Tracing
- 
-An overhead computer-vision tool that helps a technician **record and verify wiring
-connections** on Schweitzer Engineering Laboratories (SEL) terminal-block panels.
-A camera mounted above the board identifies the panel components and tracks the two
-test probes, while a LabJack U12 reports whether the probe tips are electrically
-connected. A connection is written to the record **only when the vision system and
-the hardware sensor agree**. The system is a verification and record-keeping aid
-that augments the technician's judgment, not a replacement for it.
- 
-This project was built as a Portland State University senior capstone for SEL.
- 
-> **Runs fully offline.** The system makes no network calls and requires no cloud
-> services. All dependencies are installed once at setup and run entirely on the
-> local machine thereafter.
- 
+# Camera Calibration and Pose Measurement
+
+Two measurement tools for the Continuity Annotation System, supporting the
+Camera Position Evaluation Plan.
+
+**Nothing here changes how `main.py` behaves.** These are separate tools with
+their own config file. They read the same camera and the same four ArUco
+markers, and they write their own output files.
+
 ---
- 
-## What it does
- 
-1. **Detects panel components** with a YOLOv8 oriented-bounding-box (OBB) model:
-   `Flathead_Block`, `Phillips_Block`, `Terminal_1`, and `Terminal_2`.
-2. **Stamps a terminal map** onto every detected device. Terminal positions are
-   learned once (per device class) during calibration and stored as fractions
-   inside each device's bounding box, so the same calibration applies to every
-   device of that class, anywhere on the board.
-3. **Tracks the two probes** by color (HSV). No physical markers are attached to
-   the probes. Instead, you teach each probe its color by clicking it in the live video.
-4. **Flattens the board for the record** using four ArUco markers to compute a
-   homography. The flattened view is a clean record surface only; nothing is
-   tracked on it.
-5. **Records connections** automatically. When the LabJack reports continuity *and*
-   the camera sees each probe resting on a known, different terminal, and that
-   holds steady past a short debounce, the pair is recorded, grouped with anything
-   already wired to it, and written to a `.txt` table and a SQLite database.
-### Decision-gated recording (the core design principle)
- 
-The system never records a connection on the strength of the camera alone or the
-sensor alone. Both must agree. This is a deliberate safeguard against automation
-bias: a recorded pair is only as trustworthy as the terminal IDs underneath it, and
-the system is built to make its uncertainty visible rather than to assert a
-connection it cannot stand behind. Where it cannot be sure, it says so on screen
-(for example, a bold "LABJACK NOT CONNECTED" banner whenever the sensor is offline,
-stamped onto saved records as well so an image never silently implies continuity was
-being measured).
- 
+
+## What these tools answer
+
+**`calibrate_camera.py`** — what are this camera's optics? Focal length, where
+the lens centre actually falls on the sensor, and how much the lens bends
+straight lines. These do not change when you move the camera.
+
+**`measure_camera_pose.py`** — where is the camera right now, and which way is
+it pointing, relative to the plywood? Reported as a 3D position in millimetres
+plus tilt, azimuth, roll, and the aviation yaw/pitch/roll.
+
+It also predicts **probe parallax** at any point on the board, which is the
+number that decides whether a camera position is usable at all.
+
+You must do the calibration first. Until the lens distortion is known, an angle
+measured from the markers is contaminated — and worst at the frame edges, which
+is exactly where the markers sit.
+
 ---
- 
-## Hardware required
- 
-- **Elgato Facecam 4K**, mounted overhead, roughly perpendicular to the board.
-  (Configured via the Elgato Camera Hub to Mirror + Flip; see `config.py`.)
-- **LabJack U12**, connected by USB, wired to the **two test probes** and *not* to the
-  circuit terminals directly. The U12 reports a single yes/no: are the probe tips
-  electrically connected?
-- **Two test probes**, with no markers attached.
-- **Four ArUco markers** (IDs 0, 3, 4, 5; dictionary `DICT_7X7_50`) at the corners
-  of the work surface.
-- A Windows PC. A CUDA-capable GPU speeds up detection but is **not required** —
-  the detector runs only once per session, so a CPU is fine.
----
- 
-## Software setup
- 
-Developed and tested on **Python 3.13, Windows**. Python 3.10 or newer is expected
-to work. There are two installation steps: the Python packages, and the LabJack U12
-hardware driver.
- 
-### 1. Python packages
- 
-```bash
-# from the repository root
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-pip install -r requirements.txt
+
+## Order of operations
+
 ```
- 
-### 2. LabJack U12 Windows driver
- 
-`pip` installs the Python wrapper (the `LabJackPython` package, which is what
-provides `import u12`) but **not** the hardware driver. On Windows the U12 needs its
-driver installed separately:
- 
-1. Download and run **`LabJack-U12-Installer-2023-09-05.exe`** from LabJack's
-   [U12 software page](https://support.labjack.com/docs/u12-software-installer-downloads-u12).
-2. This installs the U12 Library (`ljackuw.dll`, **v1.22**) plus LabJack's utilities
-   and documentation. It is compatible with Windows through Windows 11.
-3. Verify the sensor on its own before running the full system:
-```bash
-   cd tools
-   python test_labjack_u12.py
+1.  python test_pose_math.py               # no hardware needed; proves the maths
+2.  python make_charuco_board.py           # generates the printable board
+    ... print it, glue it to something rigid, MEASURE the squares ...
+    ... put the measured sizes into camera_config.py ...
+3.  python capture_calibration_images.py   # photograph the board, ~25 views
+4.  python calibrate_camera.py             # writes camera_intrinsics.json
+    ... measure the four board markers, fill in MARKER_LAYOUT ...
+5.  python measure_camera_pose.py --solve-rotations   # if unsure of rotations
+6.  python measure_camera_pose.py          # measure the pose
 ```
-   Shorting the two probe tips should print `connected`; separating them prints
-   `open`.
- 
+
+Run step 1 before anything else. If it fails, the problem is in the code. If it
+passes and real measurements still look wrong, the problem is in the numbers you
+measured — and knowing which saves hours.
+
 ---
- 
-## One-time calibration
- 
-The repository ships with a `terminal_map.json` already calibrated for the delivered
-panel, so you can run the system as-is. You only need to recalibrate if you change
-the camera resolution, the camera position, or the set of device classes.
- 
-To recalibrate, run the calibration tool from inside `src/` and follow the on-screen
-controls:
- 
-```bash
-cd src
-python calibrate_terminals.py
-```
- 
-You teach the probe its color, pick a device class, rest the probe on each terminal
-and press `x` to mark it, then press `q` to save. The tool writes a new
-`terminal_map.json`. **Run it at the same camera resolution you run the main system
-at.**
- 
+
+## Files
+
+| File | What it is |
+|---|---|
+| `camera_config.py` | Every setting. The only file you normally edit. |
+| `make_charuco_board.py` | Generates `charuco_board.png` for printing. |
+| `capture_calibration_images.py` | Interactive capture with sharpness and frame-coverage checks. |
+| `calibrate_camera.py` | Runs the calibration; writes `camera_intrinsics.json`. Also provides `load_intrinsics()`. |
+| `camera_pose.py` | Library. Pose solving, angle decomposition, parallax prediction. No side effects on import. |
+| `measure_camera_pose.py` | The runnable pose tool (live, single image, or rotation search). |
+| `test_pose_math.py` | Self-check. Needs no hardware. |
+
 ---
- 
-## Running the system
- 
-```bash
-cd src
-python main.py
-```
- 
-Run from inside `src/` so the program finds `weights_v2_4_obb.pt`,
-`terminal_map.json`, and writes its output folders alongside the code.
- 
-### On-screen controls
- 
-| Key        | Action                                              |
-|------------|-----------------------------------------------------|
-| `1` / `2`  | choose which probe to teach                         |
-| click + `s`| teach the chosen probe its color                    |
-| `g`        | show / hide terminal circles + connection flags     |
-| `c`        | save a clean record image + a labeled legend image  |
-| `r`        | start / stop recording a video of the session       |
-| `u`        | undo the most recent recorded connection            |
-| `o`        | re-run component detection                           |
-| `l`        | re-lock the homography (re-find the ArUco markers)  |
-| `d`        | toggle the probe color-mask debug windows           |
-| `h`        | show / hide the on-screen controls window           |
-| `q`        | save the final record and quit                      |
- 
+
+## The four things most likely to go wrong
+
+**1. You typed the intended print size instead of the measured one.**
+Printers scale by a few percent by default. Every millimetre the pose tool
+reports is scaled by `CHARUCO_SQUARE_LENGTH_MM`. Measure five squares with a
+steel rule and divide by five. Nothing downstream can detect this error.
+
+**2. The calibration resolution does not match the operating resolution.**
+Intrinsics are expressed in pixels, so they are only valid at one image size.
+Calibrate at 3840 × 2160 if that is what `main.py` runs at. Both tools warn if
+they notice a mismatch, but do not rely on the warning.
+
+**3. Camera Hub settings changed between calibration and use.**
+Digital zoom, PTZ crop, or aspect correction all change the effective optics.
+Lock every Camera Hub setting before you calibrate and do not touch them
+afterwards. If `fx / fy` comes out far from 1.000, that is usually the cause.
+
+**4. `MARKER_LAYOUT` is wrong.**
+If the reprojection error is more than a few pixels, the marker positions or
+rotations are wrong. Run `--solve-rotations` to fix the rotations. If that says
+its answer is not decisive, the centre positions are wrong and no rotation can
+rescue them — go and re-measure the plywood.
+
 ---
- 
-## What gets saved
- 
-Each session writes to local folders (created automatically, ignored by Git):
- 
-- **`captures/`**: clean record images and labeled legend images (`c` and `q`).
-- **`recordings/`**: session videos (`r`).
-- **`connections/`**: a fresh, timestamped pair of files per session: a
-  human-readable `.txt` table and a SQLite `.db`. A previous session's files are
-  never overwritten.
-The list of recorded connections is the single source of truth: the groups, the
-`.txt`, and the database are rebuilt from it on every change, so undo is always
-consistent across all three.
- 
+
+## Reading the output
+
+**Tilt, azimuth, and board roll** are the recommended angle set. Tilt is θ and
+azimuth is φ from the Camera Position Evaluation Plan.
+
+**Azimuth is reported as undefined when the camera is directly overhead.** That
+is correct, not a failure: there is no direction to the camera when it is
+straight up, the same way there is no compass bearing to the North Pole once
+you are standing on it.
+
+**Yaw, pitch and roll** are also reported, because they were asked for, but they
+are mathematically degenerate at the overhead baseline. At 90° of pitch, yaw and
+roll become the same rotation and cannot be separated — gimbal lock. Near that
+pose those two numbers jitter between frames even with the camera bolted down.
+The tool prints a warning when this applies. **Quote tilt, azimuth and board
+roll in the report; treat yaw/pitch/roll as supplementary.**
+
+**Board roll in image** is worth watching for a reason unrelated to geometry:
+the YOLO model was trained with the board at one particular rotation. If this
+number drifts far from its training value, expect detection to degrade — and
+that is a dataset problem, not a camera-position problem. Recording it lets you
+tell the two apart.
+
+**Frame-to-frame spread** is printed after every `m` measurement. That is the
+repeatability of the measurement, and it is the number to quote when you write
+"the camera was at 30 degrees." A spread above about 0.2° means something is
+moving: check the mount, the lighting, and the markers.
+
 ---
- 
-## Repository structure
- 
-```
-SEL_AR_Circuit_Tracing/
-├── src/                   the final, runnable system (run from here)
-├── tools/                 supporting scripts used to build the project
-├── weights/
-│   ├── device_detection/  training run behind the delivered detection model
-│   └── probe_tracking/    future-work model (NOT used by the delivered system)
-├── datasets/
-│   ├── device_detection/  dataset that trained the delivered detection model
-│   └── probe_detection/   pointer to the future-work dataset (see below)
-├── docs/                  final report, supporting documents, and a media pointer
-├── requirements.txt
-├── media_README.md
-├── LICENSE
-└── README.md
-```
- 
-Some large files are hosted as GitHub **Release** assets rather than committed to
-the repository, because they exceed GitHub's 100 MB per-file limit:
- 
-- The **probe-detection dataset** (~476 MB) is an experimental, future-work dataset
-  **not used by the delivered system**. See `datasets/probe_detection/README.md`.
-- Three **sponsor-requested videos** (~1 GB each). See `docs/media.md`.
-Both are available from the [v1.0 release](https://github.com/Jon-Knapp/SEL_AR_Circuit_Tracing/releases/tag/v1.0).
- 
+
+## The parallax table
+
+Press `p` after a measurement. For each sample point on the board it predicts
+how far the probe's tracked colour will *appear* from where the tip actually is.
+
+Read the largest value against **half your tightest terminal pitch**. Above
+that, the system will confidently name the wrong terminal.
+
+Two things this table will show you that the simple `h × tan(θ)` formula cannot:
+
+- The error is **different at different places on the board**, even with the
+  camera mounted perfectly overhead. A terminal near the frame edge is viewed
+  at an angle regardless of how the camera body is mounted.
+- The error has a **direction**, not just a magnitude. It always points away
+  from the camera. That means it is systematic and, in principle, correctable —
+  unlike random noise.
+
+Set `PROBE_COLOUR_HEIGHT_MM` from an actual measurement of your probe in a
+normal working grip. Moving the magenta tape closer to the tip reduces this
+height, and it is the cheapest parallax mitigation available to you.
+
 ---
- 
-## Known limitations
- 
-These are documented honestly so the system is not trusted beyond what it can do:
- 
-- **Terminal-ID trust.** A recorded pair is only as trustworthy as the terminal IDs
-  the vision system assigned. The debounce rejects a momentary brush but cannot catch
-  a probe resting steadily on a mis-identified terminal. The on-screen circles and
-  the saved legend image make every assignment visible and traceable.
-- **180° flip ambiguity.** A symmetric rectangular device looks the same rotated
-  end-for-end, so if a device is placed reversed from how it was calibrated, its
-  terminal numbering flips. Devices placed the usual way up are unaffected. Resolving
-  this is future work.
-- **LabJack reconnect.** Recovery after the U12 is unplugged and replugged
-  mid-session is not guaranteed; restarting the program is the clean recovery path.
-- **Cross-session queries.** Each session records to its own files; querying across
-  multiple sessions requires opening more than one database.
----
- 
-## Future work
- 
-- Markerless probe tracking with a trained object detector (dataset attached to the
-  v1.0 Release).
-- A natural-language query layer over the recorded connections using a locally hosted
-  LLM (preserving the offline constraint).
-- Improved probe-tracking robustness and a resolution to the 180° flip ambiguity.
----
- 
-## License
- 
-See [`LICENSE`](LICENSE).
- 
-Built for Schweitzer Engineering Laboratories.
+
+## OpenCV version
+
+Written for the modern ArUco API (`cv2.aruco.CharucoDetector`,
+`cv2.aruco.ArucoDetector`, `board.matchImagePoints`), which needs **OpenCV
+4.7 or later**. Verified on 4.13. The older `interpolateCornersCharuco` and
+`calibrateCameraCharuco` helpers are deliberately not used — they are removed or
+deprecated in current versions.
